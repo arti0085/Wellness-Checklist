@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#EDD5C8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wellness">
+<title>Daily Wellness</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --blush:#F5E8E0; --blush2:#EDD5C8; --rose:#C9897A; --dusty:#B07A89;
+  --sage:#8FA88A; --sage-lt:#C8D9C4; --cream:#FAF6F2; --ink:#3A2E2C; --muted:#9A867E;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bot:env(safe-area-inset-bottom,0px);
+}
+html,body { height:100%; overflow:hidden; }
+body { background:var(--cream); font-family:'DM Sans',sans-serif; color:var(--ink); height:100dvh; display:flex; flex-direction:column; }
+
+/* ── SCREENS ── */
+.screen { display:none; flex-direction:column; height:100dvh; }
+.screen.active { display:flex; }
+
+/* ── INSTALL BANNER ── */
+#install-banner { display:none; align-items:center; gap:10px; padding:10px 16px; padding-top:calc(10px + var(--safe-top)); background:var(--dusty); color:#fff; font-size:13px; flex-shrink:0; }
+#install-banner.show { display:flex; }
+#install-btn { background:#fff; color:var(--dusty); border:none; border-radius:20px; padding:5px 14px; font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; }
+#dismiss-btn { background:none; border:none; color:rgba(255,255,255,.7); font-size:18px; cursor:pointer; padding:0 4px; }
+
+/* ── HEADER (shared style) ── */
+.app-header {
+  background:linear-gradient(160deg,var(--blush) 0%,var(--blush2) 100%);
+  padding:20px 20px 16px; padding-top:calc(20px + var(--safe-top));
+  position:relative; overflow:hidden; flex-shrink:0;
+}
+.app-header svg.bg-floral { position:absolute; right:-14px; top:-14px; opacity:.5; pointer-events:none; }
+.app-header svg.bl-floral { position:absolute; left:-8px; bottom:-16px; opacity:.35; pointer-events:none; transform:scaleX(-1) rotate(20deg); }
+.date-pill { display:inline-block; background:rgba(255,255,255,.6); border-radius:20px; padding:3px 10px; font-size:10px; letter-spacing:.08em; color:var(--dusty); text-transform:uppercase; margin-bottom:6px; }
+.app-header h1 { font-family:'Cormorant Garamond',serif; font-weight:300; font-size:26px; line-height:1.1; color:var(--ink); }
+.app-header h1 em { font-style:italic; color:var(--dusty); }
+.header-row { display:flex; align-items:flex-start; justify-content:space-between; }
+.header-actions { display:flex; gap:8px; margin-top:4px; }
+.icon-btn { background:rgba(255,255,255,.5); border:none; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; flex-shrink:0; -webkit-tap-highlight-color:transparent; }
+
+/* progress */
+.progress-wrap { margin-top:12px; display:flex; align-items:center; gap:10px; }
+.progress-bar { flex:1; height:4px; background:rgba(255,255,255,.5); border-radius:99px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--rose),var(--dusty)); border-radius:99px; transition:width .5s ease; width:0%; }
+.progress-label { font-size:11px; color:var(--dusty); white-space:nowrap; min-width:40px; text-align:right; }
+
+/* ── SCROLL BODY ── */
+.scroll-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 18px calc(16px + var(--safe-bot)); }
+
+/* ── SECTION LABEL ── */
+.section-label { font-size:9px; font-weight:400; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:20px 0 8px; display:flex; align-items:center; gap:8px; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--blush); }
+.section-label:first-child { margin-top:0; }
+
+/* ── CHECKLIST ITEMS ── */
+.items { display:flex; flex-direction:column; gap:5px; }
+.item { display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:14px; cursor:pointer; border:1.5px solid transparent; background:var(--cream); transition:background .2s,border-color .2s,transform .1s; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.item:active { transform:scale(.97); }
+.item.done { background:#fff; border-color:var(--sage-lt); }
+.petal-box { width:24px; height:24px; flex-shrink:0; }
+.petal-box svg { width:100%; height:100%; transition:transform .3s cubic-bezier(.34,1.56,.64,1); }
+.item.done .petal-box svg { transform:scale(1.1) rotate(15deg); }
+.petal-outer { fill:none; stroke:var(--blush2); stroke-width:1.5; transition:stroke .3s; }
+.petal-inner { fill:none; transition:fill .3s; }
+.tick { stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; opacity:0; transition:opacity .25s .1s; }
+.item.done .petal-outer { stroke:var(--sage); }
+.item.done .petal-inner { fill:var(--sage); }
+.item.done .tick { opacity:1; }
+.item-emoji { font-size:15px; line-height:1; }
+.item-text { flex:1; font-size:13px; font-weight:300; color:var(--ink); transition:color .3s; }
+.item.done .item-text { color:var(--muted); text-decoration:line-through; text-decoration-color:var(--sage-lt); }
+.item-note { font-size:10px; color:var(--muted); display:block; margin-top:1px; }
+
+/* done banner */
+.done-banner { display:none; flex-direction:column; align-items:center; gap:5px; margin-top:20px; padding:18px; border-radius:16px; background:linear-gradient(135deg,var(--blush),var(--sage-lt)); text-align:center; }
+.done-banner.show { display:flex; }
+.done-banner .bloom { font-size:28px; }
+.done-banner p { font-family:'Cormorant Garamond',serif; font-size:17px; font-style:italic; color:var(--dusty); }
+.done-banner small { font-size:11px; color:var(--muted); }
+.reset-btn { display:block; width:100%; margin-top:16px; padding:11px; border:1.5px solid var(--blush2); border-radius:12px; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:background .2s,color .2s; }
+.reset-btn:active { background:var(--blush); color:var(--dusty); }
+
+/* ══════════════════════════════════
+   CUSTOMISE SCREEN
+══════════════════════════════════ */
+.cust-header { background:linear-gradient(160deg,var(--blush) 0%,var(--blush2) 100%); padding:20px 20px 16px; padding-top:calc(20px + var(--safe-top)); flex-shrink:0; display:flex; align-items:center; gap:12px; }
+.cust-header h2 { font-family:'Cormorant Garamond',serif; font-weight:300; font-size:24px; color:var(--ink); flex:1; }
+.cust-header h2 em { font-style:italic; color:var(--dusty); }
+.back-btn { background:rgba(255,255,255,.5); border:none; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; flex-shrink:0; }
+
+.cust-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 18px calc(80px + var(--safe-bot)); }
+
+/* section block */
+.cust-section { margin-bottom:20px; }
+.cust-section-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.cust-section-name { font-size:9px; font-weight:400; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); flex:1; }
+.del-section-btn { background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; padding:2px 6px; border-radius:8px; }
+.del-section-btn:active { background:var(--blush); }
+
+/* edit rows */
+.edit-rows { display:flex; flex-direction:column; gap:5px; }
+.edit-row { display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid var(--blush2); border-radius:12px; padding:8px 10px; transition:border-color .2s; }
+.edit-row:focus-within { border-color:var(--rose); }
+.drag-handle { color:var(--muted); font-size:14px; cursor:grab; flex-shrink:0; touch-action:none; padding:0 2px; }
+.emoji-btn { background:none; border:none; font-size:17px; cursor:pointer; flex-shrink:0; padding:0 2px; border-radius:6px; }
+.emoji-btn:active { background:var(--blush); }
+.edit-inputs { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.edit-title { border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--ink); background:transparent; width:100%; }
+.edit-note { border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:10px; color:var(--muted); background:transparent; width:100%; }
+.edit-title::placeholder,.edit-note::placeholder { color:#ccc; }
+.del-row-btn { background:none; border:none; color:#ddd; font-size:18px; cursor:pointer; flex-shrink:0; line-height:1; padding:0 2px; transition:color .2s; }
+.del-row-btn:active { color:var(--rose); }
+
+/* add buttons */
+.add-item-btn { display:flex; align-items:center; gap:6px; width:100%; margin-top:6px; padding:9px 12px; border:1.5px dashed var(--blush2); border-radius:12px; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; transition:background .2s,border-color .2s; }
+.add-item-btn:active { background:var(--blush); border-color:var(--rose); }
+
+.add-section-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px; border:1.5px dashed var(--blush2); border-radius:14px; background:transparent; color:var(--dusty); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; margin-top:4px; transition:background .2s; }
+.add-section-btn:active { background:var(--blush); }
+
+/* save bar */
+.save-bar { position:fixed; bottom:0; left:0; right:0; padding:12px 18px; padding-bottom:calc(12px + var(--safe-bot)); background:rgba(250,246,242,.95); backdrop-filter:blur(8px); border-top:1px solid var(--blush2); display:flex; gap:10px; }
+.save-btn { flex:1; padding:12px; background:linear-gradient(135deg,var(--rose),var(--dusty)); color:#fff; border:none; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:14px; cursor:pointer; }
+.save-btn:active { opacity:.85; }
+.discard-btn { padding:12px 16px; background:transparent; color:var(--muted); border:1.5px solid var(--blush2); border-radius:12px; font-family:'DM Sans',sans-serif; font-size:14px; cursor:pointer; }
+
+/* emoji picker */
+.emoji-picker-overlay { display:none; position:fixed; inset:0; background:rgba(58,46,44,.3); z-index:100; align-items:flex-end; }
+.emoji-picker-overlay.show { display:flex; }
+.emoji-picker { background:#fff; border-radius:24px 24px 0 0; padding:16px 16px calc(16px + var(--safe-bot)); width:100%; max-height:60vh; }
+.emoji-picker h3 { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.emoji-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; overflow-y:auto; max-height:calc(60vh - 60px); }
+.emoji-opt { font-size:22px; text-align:center; padding:6px 2px; border-radius:8px; cursor:pointer; }
+.emoji-opt:active { background:var(--blush); }
+
+/* new section name dialog */
+.dialog-overlay { display:none; position:fixed; inset:0; background:rgba(58,46,44,.3); z-index:200; align-items:center; justify-content:center; padding:24px; }
+.dialog-overlay.show { display:flex; }
+.dialog { background:#fff; border-radius:20px; padding:24px; width:100%; max-width:320px; }
+.dialog h3 { font-family:'Cormorant Garamond',serif; font-size:20px; font-style:italic; color:var(--dusty); margin-bottom:12px; }
+.dialog input { width:100%; border:1.5px solid var(--blush2); border-radius:10px; padding:10px 12px; font-family:'DM Sans',sans-serif; font-size:14px; color:var(--ink); outline:none; }
+.dialog input:focus { border-color:var(--rose); }
+.dialog-btns { display:flex; gap:8px; margin-top:14px; }
+.dialog-ok { flex:1; padding:10px; background:linear-gradient(135deg,var(--rose),var(--dusty)); color:#fff; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px; cursor:pointer; }
+.dialog-cancel { padding:10px 14px; background:transparent; color:var(--muted); border:1.5px solid var(--blush2); border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════ CHECKLIST SCREEN ════════════════════════════ -->
+<div class="screen active" id="screen-home">
+
+  <div id="install-banner">
+    <span>🌸 Add to your home screen</span>
+    <button id="install-btn">Install</button>
+    <button id="dismiss-btn">✕</button>
+  </div>
+
+  <div class="app-header">
+    <svg class="bg-floral" width="110" height="110" viewBox="0 0 140 140" fill="none">
+      <ellipse cx="90" cy="50" rx="18" ry="11" fill="#C9897A" opacity=".35" transform="rotate(-30 90 50)"/>
+      <ellipse cx="90" cy="50" rx="18" ry="11" fill="#C9897A" opacity=".35" transform="rotate(30 90 50)"/>
+      <ellipse cx="90" cy="50" rx="18" ry="11" fill="#C9897A" opacity=".35" transform="rotate(90 90 50)"/>
+      <ellipse cx="90" cy="50" rx="18" ry="11" fill="#C9897A" opacity=".35" transform="rotate(150 90 50)"/>
+      <circle cx="90" cy="50" r="7" fill="#B07A89" opacity=".5"/>
+      <ellipse cx="50" cy="88" rx="10" ry="6" fill="#8FA88A" opacity=".4" transform="rotate(0 50 88)"/>
+      <ellipse cx="50" cy="88" rx="10" ry="6" fill="#8FA88A" opacity=".4" transform="rotate(60 50 88)"/>
+      <ellipse cx="50" cy="88" rx="10" ry="6" fill="#8FA88A" opacity=".4" transform="rotate(120 50 88)"/>
+      <circle cx="50" cy="88" r="4" fill="#C8D9C4" opacity=".7"/>
+    </svg>
+    <svg class="bl-floral" width="60" height="60" viewBox="0 0 80 80" fill="none">
+      <ellipse cx="40" cy="40" rx="14" ry="8" fill="#C9897A" opacity=".4" transform="rotate(0 40 40)"/>
+      <ellipse cx="40" cy="40" rx="14" ry="8" fill="#C9897A" opacity=".4" transform="rotate(60 40 40)"/>
+      <ellipse cx="40" cy="40" rx="14" ry="8" fill="#C9897A" opacity=".4" transform="rotate(120 40 40)"/>
+      <circle cx="40" cy="40" r="5" fill="#B07A89" opacity=".5"/>
+    </svg>
+    <div class="header-row">
+      <div>
+        <div class="date-pill" id="date-pill"></div>
+        <h1>Today's <em>Wellness</em> Rituals</h1>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="goCustomise()" title="Customise">✏️</button>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      <div class="progress-label" id="prog-label">0 / 0</div>
+    </div>
+  </div>
+
+  <div class="scroll-body" id="checklist-body"></div>
+</div>
+
+<!-- ════════════════════════════ CUSTOMISE SCREEN ════════════════════════════ -->
+<div class="screen" id="screen-cust">
+  <div class="cust-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <h2><em>Customise</em> your list</h2>
+  </div>
+  <div class="cust-body" id="cust-body"></div>
+  <div class="save-bar">
+    <button class="discard-btn" onclick="discardChanges()">Discard</button>
+    <button class="save-btn" onclick="saveChanges()">Save changes</button>
+  </div>
+</div>
+
+<!-- emoji picker -->
+<div class="emoji-picker-overlay" id="emoji-overlay" onclick="closeEmojiPicker(event)">
+  <div class="emoji-picker">
+    <h3>Choose an emoji</h3>
+    <div class="emoji-grid" id="emoji-grid"></div>
+  </div>
+</div>
+
+<!-- new section dialog -->
+<div class="dialog-overlay" id="section-dialog">
+  <div class="dialog">
+    <h3>New section</h3>
+    <input type="text" id="section-name-input" placeholder="e.g. Afternoon" maxlength="30">
+    <div class="dialog-btns">
+      <button class="dialog-cancel" onclick="closeSectionDialog()">Cancel</button>
+      <button class="dialog-ok" onclick="confirmAddSection()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// DEFAULT DATA
+// ══════════════════════════════════════════
+const DEFAULT_SECTIONS = [
+  { id:'morning', name:'Morning', items:[
+    { id:'wake',       emoji:'🌤', title:'Wake up early',          note:'Before 7 am' },
+    { id:'vitamins',   emoji:'💊', title:'Vitamins & supplements', note:'Vitamin D, Omega-3, Magnesium' },
+    { id:'skincare-am',emoji:'🫧', title:'Skincare routine',       note:'Cleanse · SPF · moisturize' },
+    { id:'water-am',   emoji:'💧', title:'Morning glass of water', note:'Before coffee' },
+  ]},
+  { id:'body', name:'Body', items:[
+    { id:'workout', emoji:'🏃‍♀️', title:'Workout',               note:'30 min minimum' },
+    { id:'water',   emoji:'🥤', title:'Hit water goal',           note:'2 L / 8 glasses' },
+    { id:'food',    emoji:'🥗', title:'Eat something nourishing', note:'Protein + greens' },
+    { id:'steps',   emoji:'🚶‍♀️', title:'Steps outside',         note:'Fresh air & sunlight' },
+  ]},
+  { id:'mind', name:'Mind', items:[
+    { id:'read',     emoji:'📖', title:'Read or journal',    note:'10 min minimum' },
+    { id:'breathe',  emoji:'🧘‍♀️', title:'Breathe & slow down', note:'Meditate or stretch' },
+    { id:'noscreen', emoji:'📵', title:'Phone-free hour',    note:'Morning or evening' },
+  ]},
+  { id:'evening', name:'Evening', items:[
+    { id:'skincare-pm', emoji:'✨', title:'Evening skincare',   note:'Cleanse · serum · moisturize' },
+    { id:'winddown',    emoji:'🌙', title:'Wind-down routine',  note:'No screens after 9 pm' },
+    { id:'sleep',       emoji:'😴', title:'Sleep by 10:30 pm', note:'7–8 hours tonight' },
+  ]},
+];
+
+const EMOJIS = ['🌤','💊','🫧','💧','🏃‍♀️','🥤','🥗','🚶‍♀️','📖','🧘‍♀️','📵','✨','🌙','😴',
+  '🌸','🌿','🍋','🍵','☕','🫖','🛁','💆‍♀️','🪷','🌺','💐','🌱','🥦','🍎','🫐','🥑',
+  '💪','🎯','📝','🎨','🎵','📚','🧴','💄','👟','🏊‍♀️','🚴‍♀️','🧗‍♀️','🌅','🌄','⭐','✅',
+  '🫀','🦷','💅','🛌','🧹','🪴','🐾','🐶','🐱','☀️','🌙','❄️','🌊','🔮','🕯️','🪞'];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const SECTIONS_KEY = 'wellness-sections';
+const todayKey = () => 'wellness-done-' + new Date().toISOString().slice(0,10);
+
+function loadSections() {
+  try { const s = JSON.parse(localStorage.getItem(SECTIONS_KEY)); if(s) return s; } catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+}
+function saveSections(s) { try { localStorage.setItem(SECTIONS_KEY, JSON.stringify(s)); } catch(e){} }
+
+function loadDone() {
+  try { return JSON.parse(localStorage.getItem(todayKey()) || '{}'); } catch(e){ return {}; }
+}
+function saveDone(d) { try { localStorage.setItem(todayKey(), JSON.stringify(d)); } catch(e){} }
+
+// clean old done keys
+try {
+  const today = todayKey();
+  Object.keys(localStorage).filter(k=>k.startsWith('wellness-done-')&&k!==today).forEach(k=>localStorage.removeItem(k));
+} catch(e){}
+
+let sections = loadSections();
+let doneState = loadDone();
+let editSections = null; // working copy for customise
+
+// ══════════════════════════════════════════
+// PETAL SVG helper
+// ══════════════════════════════════════════
+function petalSVG() {
+  return `<svg viewBox="0 0 26 26"><ellipse class="petal-outer" cx="13" cy="13" rx="9" ry="5.5" transform="rotate(0 13 13)"/><ellipse class="petal-inner" cx="13" cy="13" rx="9" ry="5.5" transform="rotate(0 13 13)"/><ellipse class="petal-outer" cx="13" cy="13" rx="9" ry="5.5" transform="rotate(60 13 13)"/><ellipse class="petal-inner" cx="13" cy="13" rx="9" ry="5.5" transform="rotate(60 13 13)"/><ellipse class="petal-outer" cx="13" cy="13" rx="9" ry="5.5" transform="rotate(120 13 13)"/><ellipse class="petal-inner" cx="13" cy="13" rx="9" ry="5.5" transform="rotate(120 13 13)"/><polyline class="tick" points="9,13 12,16 17,10"/></svg>`;
+}
+
+// ══════════════════════════════════════════
+// CHECKLIST RENDER
+// ══════════════════════════════════════════
+function renderChecklist() {
+  const body = document.getElementById('checklist-body');
+  let html = '';
+  sections.forEach(sec => {
+    if(!sec.items.length) return;
+    html += `<div class="section-label">${sec.name}</div><div class="items">`;
+    sec.items.forEach(item => {
+      const done = doneState[item.id] ? ' done' : '';
+      html += `<div class="item${done}" data-id="${item.id}" onclick="toggleItem(this)">
+        <div class="petal-box">${petalSVG()}</div>
+        <span class="item-emoji">${item.emoji}</span>
+        <span class="item-text">${item.title}<span class="item-note">${item.note||''}</span></span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `<div class="done-banner" id="done-banner"><div class="bloom">🌸</div><p>You bloomed today.</p><small>Every ritual is an act of self-love.</small></div>`;
+  html += `<button class="reset-btn" onclick="resetAll()">↺ Start fresh</button>`;
+  body.innerHTML = html;
+  updateProgress();
+}
+
+function toggleItem(el) {
+  el.classList.toggle('done');
+  doneState[el.dataset.id] = el.classList.contains('done');
+  saveDone(doneState);
+  updateProgress();
+}
+
+function resetAll() {
+  document.querySelectorAll('#checklist-body .item').forEach(el => el.classList.remove('done'));
+  doneState = {};
+  saveDone(doneState);
+  updateProgress();
+}
+
+function updateProgress() {
+  const all = document.querySelectorAll('#checklist-body .item');
+  const done = [...all].filter(i=>i.classList.contains('done'));
+  const pct = all.length ? (done.length/all.length)*100 : 0;
+  document.getElementById('prog-fill').style.width = pct+'%';
+  document.getElementById('prog-label').textContent = `${done.length} / ${all.length}`;
+  const banner = document.getElementById('done-banner');
+  if(banner) banner.classList.toggle('show', done.length===all.length && all.length>0);
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function goCustomise() {
+  editSections = JSON.parse(JSON.stringify(sections));
+  renderCustomise();
+  document.getElementById('screen-home').classList.remove('active');
+  document.getElementById('screen-cust').classList.add('active');
+}
+function goHome() {
+  document.getElementById('screen-cust').classList.remove('active');
+  document.getElementById('screen-home').classList.add('active');
+}
+function discardChanges() { editSections = null; goHome(); }
+function saveChanges() {
+  // collect from DOM
+  editSections = collectEditState();
+  sections = editSections;
+  saveSections(sections);
+  renderChecklist();
+  goHome();
+}
+
+// ══════════════════════════════════════════
+// CUSTOMISE RENDER
+// ══════════════════════════════════════════
+function renderCustomise() {
+  const body = document.getElementById('cust-body');
+  let html = '';
+  editSections.forEach((sec, si) => {
+    html += `<div class="cust-section" data-si="${si}">
+      <div class="cust-section-head">
+        <span class="cust-section-name">${sec.name}</span>
+        <button class="del-section-btn" onclick="deleteSection(${si})" title="Delete section">🗑</button>
+      </div>
+      <div class="edit-rows" id="rows-${si}">`;
+    sec.items.forEach((item, ii) => {
+      html += editRowHTML(si, ii, item);
+    });
+    html += `</div>
+      <button class="add-item-btn" onclick="addItem(${si})">＋ Add item</button>
+    </div>`;
+  });
+  html += `<button class="add-section-btn" onclick="openSectionDialog()">＋ Add section</button>`;
+  body.innerHTML = html;
+  initDrag();
+}
+
+function editRowHTML(si, ii, item) {
+  return `<div class="edit-row" data-si="${si}" data-ii="${ii}">
+    <span class="drag-handle" aria-label="Drag to reorder">⠿</span>
+    <button class="emoji-btn" onclick="openEmojiPicker(${si},${ii})">${item.emoji}</button>
+    <div class="edit-inputs">
+      <input class="edit-title" type="text" value="${esc(item.title)}" placeholder="Task name" maxlength="50">
+      <input class="edit-note" type="text" value="${esc(item.note||'')}" placeholder="Note (optional)" maxlength="60">
+    </div>
+    <button class="del-row-btn" onclick="deleteItem(${si},${ii})">×</button>
+  </div>`;
+}
+
+function esc(s) { return s.replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// collect current DOM state into editSections
+function collectEditState() {
+  const result = [];
+  document.querySelectorAll('.cust-section').forEach(secEl => {
+    const si = +secEl.dataset.si;
+    const sec = editSections[si];
+    const items = [];
+    secEl.querySelectorAll('.edit-row').forEach(row => {
+      const ii = +row.dataset.ii;
+      const orig = sec.items[ii] || {};
+      items.push({
+        id: orig.id || ('item-'+Date.now()+'-'+Math.random().toString(36).slice(2,6)),
+        emoji: row.querySelector('.emoji-btn').textContent,
+        title: row.querySelector('.edit-title').value.trim() || 'Untitled',
+        note:  row.querySelector('.edit-note').value.trim(),
+      });
+    });
+    result.push({ id: sec.id, name: sec.name, items });
+  });
+  return result;
+}
+
+function deleteSection(si) {
+  if(editSections[si].items.length > 0 && !confirm(`Delete "${editSections[si].name}" and all its items?`)) return;
+  editSections = collectEditState();
+  editSections.splice(si, 1);
+  renderCustomise();
+}
+
+function addItem(si) {
+  editSections = collectEditState();
+  editSections[si].items.push({ id:'item-'+Date.now(), emoji:'🌸', title:'', note:'' });
+  renderCustomise();
+  // focus new title
+  const rows = document.querySelectorAll(`#rows-${si} .edit-row`);
+  const last = rows[rows.length-1];
+  if(last) last.querySelector('.edit-title').focus();
+}
+
+function deleteItem(si, ii) {
+  editSections = collectEditState();
+  editSections[si].items.splice(ii, 1);
+  renderCustomise();
+}
+
+// ── Section dialog ──
+function openSectionDialog() {
+  document.getElementById('section-name-input').value = '';
+  document.getElementById('section-dialog').classList.add('show');
+  setTimeout(()=>document.getElementById('section-name-input').focus(), 100);
+}
+function closeSectionDialog() { document.getElementById('section-dialog').classList.remove('show'); }
+function confirmAddSection() {
+  const name = document.getElementById('section-name-input').value.trim();
+  if(!name) return;
+  editSections = collectEditState();
+  editSections.push({ id:'sec-'+Date.now(), name, items:[] });
+  closeSectionDialog();
+  renderCustomise();
+}
+document.getElementById('section-name-input').addEventListener('keydown', e => { if(e.key==='Enter') confirmAddSection(); });
+
+// ══════════════════════════════════════════
+// EMOJI PICKER
+// ══════════════════════════════════════════
+let emojiTarget = null;
+function openEmojiPicker(si, ii) {
+  editSections = collectEditState();
+  emojiTarget = { si, ii };
+  const grid = document.getElementById('emoji-grid');
+  grid.innerHTML = EMOJIS.map(e=>`<div class="emoji-opt" onclick="pickEmoji('${e}')">${e}</div>`).join('');
+  document.getElementById('emoji-overlay').classList.add('show');
+}
+function pickEmoji(e) {
+  if(!emojiTarget) return;
+  const { si, ii } = emojiTarget;
+  // update in DOM directly
+  const rows = document.querySelectorAll(`#rows-${si} .edit-row`);
+  if(rows[ii]) rows[ii].querySelector('.emoji-btn').textContent = e;
+  closeEmojiPicker();
+}
+function closeEmojiPicker(ev) {
+  if(!ev || ev.target===document.getElementById('emoji-overlay')) {
+    document.getElementById('emoji-overlay').classList.remove('show');
+    emojiTarget = null;
+  }
+}
+
+// ══════════════════════════════════════════
+// DRAG TO REORDER (touch + mouse)
+// ══════════════════════════════════════════
+function initDrag() {
+  document.querySelectorAll('.edit-rows').forEach(container => {
+    let dragging = null, placeholder = null, startY = 0, offsetY = 0;
+
+    function getRows() { return [...container.querySelectorAll('.edit-row:not(.dragging-ghost)')]; }
+
+    function onStart(el, clientY) {
+      editSections = collectEditState();
+      dragging = el;
+      startY = clientY;
+      const rect = el.getBoundingClientRect();
+      offsetY = clientY - rect.top;
+
+      placeholder = document.createElement('div');
+      placeholder.style.cssText = `height:${rect.height}px;border-radius:12px;background:var(--blush);margin-bottom:5px;transition:none;`;
+      el.after(placeholder);
+
+      el.classList.add('dragging-ghost');
+      el.style.cssText = `position:fixed;top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;z-index:50;box-shadow:0 8px 24px rgba(58,46,44,.15);transition:none;opacity:.95;`;
+      document.body.appendChild(el);
+    }
+
+    function onMove(clientY) {
+      if(!dragging) return;
+      dragging.style.top = (clientY - offsetY) + 'px';
+      const midY = clientY;
+      const rows = getRows();
+      for(let row of rows) {
+        const r = row.getBoundingClientRect();
+        if(midY < r.top + r.height/2) { container.insertBefore(placeholder, row); return; }
+      }
+      container.appendChild(placeholder);
+    }
+
+    function onEnd() {
+      if(!dragging) return;
+      dragging.style.cssText = '';
+      dragging.classList.remove('dragging-ghost');
+      placeholder.replaceWith(dragging);
+      dragging = null; placeholder = null;
+      // re-index data-ii
+      getRows().forEach((r,i) => r.dataset.ii = i);
+    }
+
+    container.querySelectorAll('.drag-handle').forEach(handle => {
+      handle.addEventListener('mousedown', e => { e.preventDefault(); onStart(handle.closest('.edit-row'), e.clientY); });
+      handle.addEventListener('touchstart', e => { e.preventDefault(); onStart(handle.closest('.edit-row'), e.touches[0].clientY); }, {passive:false});
+    });
+
+    document.addEventListener('mousemove', e => onMove(e.clientY));
+    document.addEventListener('touchmove', e => { if(dragging) { e.preventDefault(); onMove(e.touches[0].clientY); } }, {passive:false});
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
+  });
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+document.getElementById('date-pill').textContent =
+  new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+renderChecklist();
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('install-banner').classList.remove('show');
+});
+document.getElementById('dismiss-btn').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+});
+</script>
+</body>
+</html>
